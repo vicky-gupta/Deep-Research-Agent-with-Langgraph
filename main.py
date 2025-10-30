@@ -1,10 +1,11 @@
 import os
 from typing import Literal
 from tavily import TavilyClient
-from deepagents import create_deep_agent
+from deepagents import create_deep_agent, CompiledSubAgent
 from langchain_google_genai import ChatGoogleGenerativeAI
 from dotenv import load_dotenv
 from langchain_core.tools import tool
+
 
 load_dotenv()
 tavily_client = TavilyClient(api_key=os.environ["TAVILY_API_KEY"])
@@ -66,13 +67,49 @@ def get_temperature(city: str) -> str:
 class WeatherMiddleware(AgentMiddleware):
   tools = [get_weather, get_temperature]
 
+
+#SUBAGENTS IMPLEMENTATION
+
+@tool
+def get_skibidi() -> str:
+    """A specialized tool for skibidi toilet."""
+    return f"Here is some specialized information about skibidi toilet."
+
+# # Create a custom agent graph
+# custom_graph = create_agent(
+#     model=llm,
+#     tools=[get_skibidi],
+#     prompt="You are a specialized agent to say something about skibidi toilet.",
+# )
+
+# # Use it as a custom subagent
+# skibidi_subagent = CompiledSubAgent(
+#     name="skibidi-toilet-agent",
+#     description="Specialized agent for complex skibidi toilet queries.",
+#     runnable=custom_graph
+# )
+
+skibidi_subagent = {
+    "name": "skibidi_subagent",
+    "description": "Specialized agent to say skibidi toilet queries.",
+    "system_prompt": "You are a specialized agent to say something about skibidi toilet.",
+    "tools": [get_skibidi],
+    "model": llm,  # Optional override, defaults to main agent model
+}
+
+subagents = [skibidi_subagent]
+
+
+#Calling the main agent to test the implementation
+
 agent = create_deep_agent(
     tools=[internet_search],
     system_prompt=research_instructions,
     model=llm,
-    middleware=[WeatherMiddleware()]
+    middleware=[WeatherMiddleware()],
+    subagents=subagents
 )
 
 # Invoke the agent with weather tools
-result1 = agent.invoke({"messages": [{"role": "user", "content": "What big has happend in Paris recently and what is the temperature there?"}]})
+result1 = agent.invoke({"messages": [{"role": "user", "content": "What big has happend in Delhi recently and what is the temperature there and what about skibidi?"}]})
 print(result1["messages"][-1].content)
